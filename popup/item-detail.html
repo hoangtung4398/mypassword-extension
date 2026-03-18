@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Item Details - MyPassword</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 500px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f8fafc;
+      padding: 20px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .back-btn {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+    .back-btn:hover { background: #e2e8f0; }
+    .header-title { font-size: 20px; font-weight: 600; }
+
+    .item-type {
+      display: inline-block;
+      padding: 6px 12px;
+      background: #eef2ff;
+      border: 1px solid #6366f1;
+      border-radius: 6px;
+      font-size: 12px;
+      color: #6366f1;
+      margin-bottom: 20px;
+    }
+
+    .field-display { margin-bottom: 20px; }
+    .field-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: #64748b;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .field-value {
+      padding: 10px 12px;
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .field-value.masked { font-family: monospace; letter-spacing: 2px; }
+    .copy-btn {
+      background: #f1f5f9;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .copy-btn:hover { background: #e2e8f0; }
+
+    .btn-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 24px;
+    }
+    .btn {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-danger {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+    .btn-danger:hover { background: #fecaca; }
+    .btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-secondary {
+      background: white;
+      border: 1px solid #e2e8f0;
+    }
+    .btn-secondary:hover { background: #f1f5f9; }
+    .btn-primary {
+      background: #6366f1;
+      color: white;
+    }
+    .btn-primary:hover { background: #4f46e5; }
+
+    .error-msg {
+      color: #ef4444;
+      font-size: 12px;
+      margin-top: 8px;
+      text-align: center;
+    }
+    .loading { text-align: center; padding: 40px; color: #64748b; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <button class="back-btn" id="back-btn">←</button>
+    <span class="header-title" id="item-name">Loading...</span>
+  </div>
+
+  <div id="loading" class="loading">Loading item...</div>
+
+  <div id="item-content" style="display: none;">
+    <div class="item-type" id="item-type"></div>
+
+    <div id="fields-container"></div>
+
+    <div class="error-msg" id="error-msg"></div>
+
+    <div class="btn-group">
+      <button type="button" class="btn btn-danger" id="delete-btn">Delete</button>
+      <button type="button" class="btn btn-secondary" id="close-btn">Close</button>
+      <button type="button" class="btn btn-primary" id="edit-btn">Edit</button>
+    </div>
+  </div>
+
+  <script type="module" src="item-detail.js"></script>
+</body>
+</html>

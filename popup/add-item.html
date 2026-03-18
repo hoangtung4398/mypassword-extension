@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Add Item - MyPassword</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 500px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f8fafc;
+      padding: 20px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .back-btn {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+    .back-btn:hover { background: #e2e8f0; }
+    .header-title { font-size: 20px; font-weight: 600; }
+
+    .type-selector {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    .type-btn {
+      flex: 1;
+      padding: 10px;
+      background: white;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.15s;
+    }
+    .type-btn:hover { border-color: #cbd5e1; }
+    .type-btn.active {
+      border-color: #6366f1;
+      background: #eef2ff;
+    }
+    .type-icon { font-size: 24px; }
+
+    .form-group { margin-bottom: 16px; }
+    .label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #475569;
+    }
+    .input, .textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .input:focus, .textarea:focus { border-color: #6366f1; }
+    .textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .password-input-wrap {
+      position: relative;
+    }
+    .toggle-visibility {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 24px;
+    }
+    .btn {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-primary {
+      background: #6366f1;
+      color: white;
+    }
+    .btn-primary:hover { background: #4f46e5; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-secondary {
+      background: white;
+      border: 1px solid #e2e8f0;
+    }
+    .btn-secondary:hover { background: #f1f5f9; }
+
+    .error-msg {
+      color: #ef4444;
+      font-size: 12px;
+      margin-top: 8px;
+      text-align: center;
+    }
+
+    .field-group { display: none; }
+    .field-group.visible { display: block; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <button class="back-btn" id="back-btn">←</button>
+    <span class="header-title" id="page-title">Add New Item</span>
+  </div>
+
+  <div class="type-selector">
+    <button class="type-btn active" data-type="1">
+      <span class="type-icon">🔑</span>
+      <span>Login</span>
+    </button>
+    <button class="type-btn" data-type="2">
+      <span class="type-icon">📝</span>
+      <span>Secure Note</span>
+    </button>
+    <button class="type-btn" data-type="3">
+      <span class="type-icon">💳</span>
+      <span>Credit Card</span>
+    </button>
+  </div>
+
+  <form id="item-form">
+    <!-- Common fields -->
+    <div class="form-group">
+      <label class="label">Name *</label>
+      <input type="text" class="input" id="field-name" required maxlength="500" placeholder="e.g. GitHub, My Notes" />
+    </div>
+
+    <!-- Login fields -->
+    <div class="field-group visible" id="login-fields">
+      <div class="form-group">
+        <label class="label">Website URL</label>
+        <input type="url" class="input" id="field-url" maxlength="2048" placeholder="https://example.com" />
+      </div>
+      <div class="form-group">
+        <label class="label">Username / Email</label>
+        <input type="text" class="input" id="field-username" autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label class="label">Password</label>
+        <div class="password-input-wrap">
+          <input type="password" class="input" id="field-password" autocomplete="new-password" />
+          <button type="button" class="toggle-visibility" id="toggle-password">👁</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="label">Notes</label>
+        <textarea class="textarea" id="field-notes"></textarea>
+      </div>
+    </div>
+
+    <!-- Secure Note fields -->
+    <div class="field-group" id="note-fields">
+      <div class="form-group">
+        <label class="label">Content *</label>
+        <textarea class="textarea" id="field-note-content" rows="8"></textarea>
+      </div>
+    </div>
+
+    <!-- Credit Card fields -->
+    <div class="field-group" id="card-fields">
+      <div class="form-group">
+        <label class="label">Cardholder Name</label>
+        <input type="text" class="input" id="field-cardholder" />
+      </div>
+      <div class="form-group">
+        <label class="label">Card Number</label>
+        <input type="text" class="input" id="field-cardnumber" maxlength="19" placeholder="1234 5678 9012 3456" />
+      </div>
+      <div style="display: flex; gap: 12px;">
+        <div class="form-group" style="flex: 1;">
+          <label class="label">Expiry (MM/YY)</label>
+          <input type="text" class="input" id="field-expiry" maxlength="5" placeholder="12/25" />
+        </div>
+        <div class="form-group" style="flex: 1;">
+          <label class="label">CVV</label>
+          <input type="text" class="input" id="field-cvv" maxlength="4" placeholder="123" />
+        </div>
+      </div>
+    </div>
+
+    <div class="error-msg" id="form-error"></div>
+
+    <div class="btn-group">
+      <button type="button" class="btn btn-secondary" id="cancel-btn">Cancel</button>
+      <button type="submit" class="btn btn-primary" id="save-btn">Save Item</button>
+    </div>
+  </form>
+
+  <script type="module" src="add-item.js"></script>
+</body>
+</html>

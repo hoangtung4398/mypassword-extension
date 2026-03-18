@@ -122,6 +122,15 @@ function renderItems(items) {
   `).join('');
 }
 
+// Click handler for vault items
+vaultList.addEventListener('click', (e) => {
+  const item = e.target.closest('.vault-item');
+  if (!item) return;
+
+  const itemId = item.dataset.id;
+  chrome.tabs.create({ url: chrome.runtime.getURL(`popup/item-detail.html?id=${itemId}`) });
+});
+
 // ---- TOTP Section ----
 
 /**

@@ -1,8 +1,10 @@
 // background/service-worker.js — MV3 service worker
 // Handles OAuth flow and token management on behalf of popup/content scripts
 
-import { setTokens, getTokens, clearAll } from '../lib/storage.js';
+import { setTokens, getTokens, clearAll, setUser } from '../lib/storage.js';
 import { apiPostPublic, apiPost } from '../lib/api.js';
+import { ensureVaultKey } from '../lib/vault-key.js';
+import { parseOtpAuthUri } from '../lib/totp.js';
 
 const API_BASE_URL = 'https://localhost:7001/api/v1';
 
@@ -26,7 +28,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === 'SAVE_TOTP_URI') {
-    saveTotpUri(message.uri)
+    saveTotpUri(message.uri, message.displayName)
       .then(result => sendResponse({ success: true, item: result }))
       .catch(err => sendResponse({ success: false, error: err.message }));
     return true;
@@ -74,6 +76,10 @@ async function handleGoogleLogin() {
     const data = await apiPostPublic('/auth/google', { idToken });
 
     await setTokens(data.accessToken, data.refreshToken);
+    await setUser(data.user);
+
+    // Ensure vault key exists for encryption
+    await ensureVaultKey(data.user.email);
 
     return { success: true, user: data.user };
   } catch (err) {
@@ -106,11 +112,20 @@ async function getAuthHeader() {
 }
 
 // ---- Save TOTP URI from content script ----
-async function saveTotpUri(uri) {
-  // Gọi API để parse + lưu TOTP account vào vault
-  const result = await apiPost('/vault/totp', { otpAuthUri: uri });
+async function saveTotpUri(uri, displayName) {
+  // Parse URI to extract issuer and account
+  const parsed = parseOtpAuthUri(uri);
 
-  // Notify user bằng badge tạm thời
+  // Use provided displayName or generate from parsed data
+  const name = displayName || `${parsed.issuer} (${parsed.accountName})`;
+
+  // Call API to save TOTP account
+  const result = await apiPost('/vault/totp', {
+    otpAuthUri: uri,
+    displayName: name
+  });
+
+  // Notify user with badge
   await chrome.action.setBadgeText({ text: '✓' });
   await chrome.action.setBadgeBackgroundColor({ color: '#4caf50' });
   setTimeout(async () => {

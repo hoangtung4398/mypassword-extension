@@ -96,7 +96,12 @@
         'otpauth://totp/'
       );
       if (uri && uri.startsWith('otpauth://')) {
-        chrome.runtime.sendMessage({ type: 'SAVE_TOTP_URI', uri });
+        const displayName = prompt('Enter a display name for this TOTP account (optional):', '');
+        chrome.runtime.sendMessage({
+          type: 'SAVE_TOTP_URI',
+          uri,
+          displayName: displayName || undefined
+        });
       }
     });
 
@@ -117,7 +122,12 @@
     `;
     btn.addEventListener('click', (e) => {
       e.preventDefault();
-      chrome.runtime.sendMessage({ type: 'SAVE_TOTP_URI', uri });
+      const displayName = prompt('Enter a display name for this TOTP account (optional):', '');
+      chrome.runtime.sendMessage({
+        type: 'SAVE_TOTP_URI',
+        uri,
+        displayName: displayName || undefined
+      });
     });
     element.insertAdjacentElement('afterend', btn);
   }
