@@ -6,7 +6,7 @@ import { apiPostPublic, apiPost } from '../lib/api.js';
 import { ensureVaultKey } from '../lib/vault-key.js';
 import { parseOtpAuthUri } from '../lib/totp.js';
 
-const API_BASE_URL = 'https://localhost:7001/api/v1';
+const API_BASE_URL = 'https://localhost:7259/api/v1';
 
 // ---- Message Handler ----
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

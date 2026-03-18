@@ -24,7 +24,7 @@
     "scripting"
   ],
   "host_permissions": [
-    "https://localhost:7001/*",
+    "https://localhost:7259/*",
     "https://*/*",
     "http://*/*"
   ],

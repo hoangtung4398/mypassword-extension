@@ -1,6 +1,6 @@
 # MyPassword API — Chrome Extension Developer Guide
 
-> **Base URL (dev):** `https://localhost:7001`
+> **Base URL (dev):** `https://localhost:7259`
 > **API Version:** `v1`
 > **Auth scheme:** JWT Bearer (`Authorization: Bearer <accessToken>`)
 

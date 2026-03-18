@@ -128,7 +128,7 @@ vaultList.addEventListener('click', (e) => {
   if (!item) return;
 
   const itemId = item.dataset.id;
-  chrome.tabs.create({ url: chrome.runtime.getURL(`popup/item-detail.html?id=${itemId}`) });
+  window.location.href = `item-detail.html?id=${itemId}`;
 });
 
 // ---- TOTP Section ----
@@ -268,8 +268,22 @@ searchInput.addEventListener('input', () => {
 });
 
 // Add new item
-btnAdd.addEventListener('click', () => {
-  chrome.tabs.create({ url: chrome.runtime.getURL('popup/add-item.html') });
+btnAdd.addEventListener('click', async () => {
+  let addItemUrl = 'add-item.html';
+
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    if (tab?.url) {
+      const currentUrl = new URL(tab.url);
+      if (currentUrl.protocol === 'http:' || currentUrl.protocol === 'https:') {
+        addItemUrl += `?domain=${encodeURIComponent(currentUrl.origin)}`;
+      }
+    }
+  } catch (err) {
+    console.log('[popup] Could not read active tab URL:', err);
+  }
+
+  window.location.replace(addItemUrl);
 });
 
 function escapeHtml(str) {

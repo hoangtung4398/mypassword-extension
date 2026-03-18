@@ -8,10 +8,17 @@ let editItemId = null;
 // Parse URL params to check if editing
 const params = new URLSearchParams(window.location.search);
 editItemId = params.get('id');
+const prefilledDomain = params.get('domain');
 
 if (editItemId) {
   document.getElementById('page-title').textContent = 'Edit Item';
   loadItemForEdit(editItemId);
+} else {
+  if (prefilledDomain) {
+    document.getElementById('field-url').value = prefilledDomain;
+  }
+  // Auto-fill URL from current tab when creating new item
+  autoFillCurrentUrl();
 }
 
 // Type selector
@@ -45,8 +52,8 @@ document.getElementById('toggle-password').addEventListener('click', () => {
 });
 
 // Back/Cancel buttons
-document.getElementById('back-btn').addEventListener('click', () => window.close());
-document.getElementById('cancel-btn').addEventListener('click', () => window.close());
+document.getElementById('back-btn').addEventListener('click', () => window.location.replace('popup.html'));
+document.getElementById('cancel-btn').addEventListener('click', () => window.location.replace('popup.html'));
 
 // Form submit
 document.getElementById('item-form').addEventListener('submit', async (e) => {
@@ -94,8 +101,8 @@ document.getElementById('item-form').addEventListener('submit', async (e) => {
       await createVaultItem(name, url, plainData, currentType);
     }
 
-    // Close window (popup will auto-refresh)
-    window.close();
+    // Navigate back to vault list in popup
+    window.location.replace('popup.html');
 
   } catch (err) {
     errorEl.textContent = err.message || 'Failed to save item. Please try again.';
@@ -133,5 +140,33 @@ async function loadItemForEdit(id) {
 
   } catch (err) {
     document.getElementById('form-error').textContent = 'Failed to load item: ' + err.message;
+  }
+}
+
+// Auto-fill URL from current active tab
+async function autoFillCurrentUrl() {
+  if (document.getElementById('field-url').value) return;
+
+  try {
+    // Get current active tab
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+
+    if (tab && tab.url) {
+      const url = new URL(tab.url);
+
+      // Only auto-fill for http/https URLs (not chrome:// or extension:// etc)
+      if (url.protocol === 'http:' || url.protocol === 'https:') {
+        // Extract origin (protocol + hostname + port)
+        const origin = url.origin;
+
+        // Auto-fill into URL field (only for Login type)
+        if (currentType === 1) {
+          document.getElementById('field-url').value = origin;
+        }
+      }
+    }
+  } catch (err) {
+    // Silently fail if can't get tab info (e.g., on chrome:// pages)
+    console.log('[add-item] Could not auto-fill URL:', err);
   }
 }
