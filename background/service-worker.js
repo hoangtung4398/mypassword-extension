@@ -5,11 +5,146 @@ import { setTokens, getTokens, clearAll, setUser } from '../lib/storage.js';
 import { apiPostPublic, apiPost } from '../lib/api.js';
 import { ensureVaultKey } from '../lib/vault-key.js';
 import { parseOtpAuthUri } from '../lib/totp.js';
+import { handlePasskeyCreateRequest, handlePasskeyGetRequest } from '../passkey/create-flow.js';
 
 const API_BASE_URL = 'https://localhost:7259/api/v1';
+const PASSKEY_REQUEST_TIMEOUT_MS = 90_000;
+const pendingPasskeyRequests = new Map();
+let passkeyDebugEnabled = false;
+
+chrome.storage.local.get('passkeyDebugEnabled').then((result) => {
+  passkeyDebugEnabled = !!result.passkeyDebugEnabled;
+}).catch(() => {
+  passkeyDebugEnabled = false;
+});
+
+function logPasskeyDebug(event, details = {}) {
+  if (!passkeyDebugEnabled) return;
+  console.log('[passkey-debug]', event, details);
+}
+
+function parseOrigin(urlString) {
+  if (!urlString) return null;
+  try {
+    return new URL(urlString).origin;
+  } catch {
+    return null;
+  }
+}
+
+function createPasskeyError(name, message) {
+  const err = new Error(message);
+  err.name = name;
+  return err;
+}
+
+function buildPasskeyContext(sender, message) {
+  const senderOrigin = parseOrigin(sender.url);
+  const topLevelOrigin = parseOrigin(sender.tab?.url);
+  const claimedOrigin = message.origin || null;
+
+  const origin = senderOrigin || claimedOrigin;
+  if (!origin) {
+    throw createPasskeyError('SecurityError', 'Unable to resolve requester origin');
+  }
+
+  if (claimedOrigin && senderOrigin && claimedOrigin !== senderOrigin) {
+    throw createPasskeyError('SecurityError', 'Origin mismatch between page and frame sender');
+  }
+
+  return {
+    origin,
+    senderOrigin,
+    topLevelOrigin,
+    topOrigin: topLevelOrigin,
+    tabId: sender.tab?.id ?? null,
+    frameId: sender.frameId ?? null,
+    requestId: message.requestId || null
+  };
+}
+
+async function runPasskeyRequest(message, sender, handler) {
+  const context = buildPasskeyContext(sender, message);
+  const requestId = context.requestId || `auto-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const requestKey = `${context.tabId ?? 'no-tab'}:${context.frameId ?? 'no-frame'}:${requestId}`;
+
+  logPasskeyDebug('request.received', {
+    type: message.type,
+    requestId,
+    tabId: context.tabId,
+    frameId: context.frameId,
+    origin: context.origin,
+    topLevelOrigin: context.topLevelOrigin
+  });
+
+  if (pendingPasskeyRequests.has(requestKey)) {
+    throw createPasskeyError('InvalidStateError', 'Duplicate passkey request in progress');
+  }
+
+  const timeout = setTimeout(() => {
+    pendingPasskeyRequests.delete(requestKey);
+  }, PASSKEY_REQUEST_TIMEOUT_MS);
+
+  pendingPasskeyRequests.set(requestKey, timeout);
+  try {
+    const result = await handler(
+      {
+        options: message.options,
+        consentGranted: message.consentGranted
+      },
+      context
+    );
+    logPasskeyDebug('request.completed', { type: message.type, requestId, requestKey });
+    return result;
+  } catch (error) {
+    logPasskeyDebug('request.failed', {
+      type: message.type,
+      requestId,
+      name: error?.name,
+      message: error?.message
+    });
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+    pendingPasskeyRequests.delete(requestKey);
+  }
+}
 
 // ---- Message Handler ----
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'PASSKEY_SET_DEBUG') {
+    passkeyDebugEnabled = !!message.enabled;
+    chrome.storage.local.set({ passkeyDebugEnabled: passkeyDebugEnabled }).catch(() => {});
+    sendResponse({ ok: true, enabled: passkeyDebugEnabled });
+    return true;
+  }
+
+  if (message.type === 'PASSKEY_CREATE_REQUEST') {
+    runPasskeyRequest(message, sender, handlePasskeyCreateRequest)
+      .then((result) => sendResponse({ ok: true, result }))
+      .catch((err) => sendResponse({
+        ok: false,
+        error: {
+          name: err?.name || 'UnknownError',
+          message: err?.message || 'Passkey creation failed'
+        }
+      }));
+    return true;
+  }
+
+  if (message.type === 'PASSKEY_GET_REQUEST') {
+    runPasskeyRequest(message, sender, handlePasskeyGetRequest)
+      .then((result) => sendResponse({ ok: true, result }))
+      .catch((err) => sendResponse({
+        ok: false,
+        error: {
+          name: err?.name || 'UnknownError',
+          message: err?.message || 'Passkey authentication failed'
+        }
+      }));
+    return true;
+  }
+
   if (message.type === 'GOOGLE_LOGIN') {
     handleGoogleLogin().then(sendResponse).catch(err => {
       sendResponse({ success: false, error: err.message });
