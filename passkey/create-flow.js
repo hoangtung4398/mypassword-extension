@@ -144,16 +144,30 @@ function parseAndValidateOrigin(origin) {
 /**
  * @param {{ frameId?: number|null, topLevelOrigin?: string|null, senderOrigin?: string|null }} context
  * @param {URL} originUrl
+ * @param {string} rpId
  */
-function validateFramePolicy(context, originUrl) {
+function validateFramePolicy(context, originUrl, rpId) {
   if (context?.senderOrigin && context.senderOrigin !== originUrl.origin) {
     throw createError('SecurityError', 'Sender origin does not match passkey origin');
   }
 
   const frameId = Number.isInteger(context?.frameId) ? context.frameId : 0;
   const topLevelOrigin = context?.topLevelOrigin || null;
-  if (frameId !== 0 && topLevelOrigin && topLevelOrigin !== originUrl.origin) {
-    throw createError('SecurityError', 'Cross-origin iframe passkey requests are blocked');
+  if (frameId !== 0 && topLevelOrigin) {
+    let topHost = '';
+    try {
+      topHost = new URL(topLevelOrigin).hostname;
+    } catch {
+      throw createError('SecurityError', 'Invalid top-level origin for frame request');
+    }
+
+    const originHost = originUrl.hostname;
+    const topMatchesRp = topHost === rpId || topHost.endsWith(`.${rpId}`);
+    const originMatchesRp = originHost === rpId || originHost.endsWith(`.${rpId}`);
+
+    if (!topMatchesRp || !originMatchesRp) {
+      throw createError('SecurityError', 'Cross-origin iframe passkey requests are blocked');
+    }
   }
 }
 
@@ -163,7 +177,6 @@ function validateFramePolicy(context, originUrl) {
  */
 export async function handlePasskeyCreateRequest(payload, context) {
   const originUrl = parseAndValidateOrigin(context.origin);
-  validateFramePolicy(context, originUrl);
   if (!payload?.consentGranted) {
     throw createError('NotAllowedError', 'User cancelled passkey creation');
   }
@@ -175,13 +188,14 @@ export async function handlePasskeyCreateRequest(payload, context) {
   if (!isRpIdValidForHost(originUrl.hostname, rpId)) {
     throw createError('SecurityError', 'rpId is not valid for this origin');
   }
+  validateFramePolicy(context, originUrl, rpId);
 
   // If any excluded credential already exists for this RP, mimic authenticator behavior.
   for (const excluded of publicKey.excludeCredentials || []) {
     if (!excluded?.id) continue;
     const existing = await getCredentialSource(excluded.id);
     if (existing && existing.rpId === rpId) {
-      throw createError('NotAllowedError', 'Credential already registered for this site');
+      throw createError('InvalidStateError', 'A passkey already exists for this application');
     }
   }
 
@@ -262,7 +276,6 @@ export async function handlePasskeyCreateRequest(payload, context) {
  */
 export async function handlePasskeyGetRequest(payload, context) {
   const originUrl = parseAndValidateOrigin(context.origin);
-  validateFramePolicy(context, originUrl);
   if (!payload?.consentGranted) {
     throw createError('NotAllowedError', 'User cancelled passkey sign-in');
   }
@@ -277,6 +290,7 @@ export async function handlePasskeyGetRequest(payload, context) {
   if (!isRpIdValidForHost(originUrl.hostname, rpId)) {
     throw createError('SecurityError', 'rpId is not valid for this origin');
   }
+  validateFramePolicy(context, originUrl, rpId);
 
   const allowCredentialIds = (publicKey.allowCredentials || [])
     .filter((item) => !item?.type || item.type === 'public-key')
